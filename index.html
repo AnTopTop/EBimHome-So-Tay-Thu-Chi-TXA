@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Sổ Thu Chi & Công Nợ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --kraft-1:#2A2018;
+    --kraft-2:#3C2E22;
+    --paper:#F2ECD9;
+    --paper-line:#C9BFA0;
+    --ink:#2A2118;
+    --ink-soft:#6B6152;
+    --brass:#A9782F;
+    --brass-dark:#7C5A22;
+    --income:#3D6B4F;
+    --income-bg:#E4EEE6;
+    --expense:#9C3D33;
+    --expense-bg:#F4E4E1;
+    --debt:#B8801E;
+    --debt-bg:#F5EAD3;
+    --debt-paid:#7A8B76;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, var(--kraft-2), transparent 60%),
+      var(--kraft-1);
+    color:var(--ink);
+    min-height:100vh;
+    padding:28px 14px 60px;
+  }
+  .wrap{max-width:720px;margin:0 auto;}
+  .masthead{
+    text-align:center;
+    color:#EFE7D3;
+    margin-bottom:16px;
+  }
+  .masthead .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--brass);
+    margin:0 0 6px;
+  }
+  .masthead h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    margin:0 0 4px;
+  }
+  .masthead p{
+    margin:0;
+    font-size:13px;
+    color:#B9AF98;
+  }
+
+  .project-bar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    max-width:720px;
+    margin:0 auto 16px;
+    background:rgba(242,236,217,.08);
+    border:1px solid rgba(242,236,217,.18);
+    border-radius:10px;
+    padding:8px 10px;
+  }
+  .project-bar select{
+    flex:1;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    padding:8px 9px;
+    border-radius:6px;
+    border:1px solid var(--paper-line);
+    background:#FCFAF3;
+    color:var(--ink);
+  }
+  .project-bar button{
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:8px 10px;
+    border-radius:6px;
+    border:1px solid var(--brass);
+    background:transparent;
+    color:var(--brass);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .project-bar button:hover{background:rgba(169,120,47,.15);}
+
+  .book{
+    background:var(--paper);
+    border-radius:14px;
+    box-shadow:0 30px 60px rgba(0,0,0,.4);
+    position:relative;
+    padding:0;
+    overflow:hidden;
+  }
+  .book::before{
+    content:"";
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:38px;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(156,61,51,.55) 0px, rgba(156,61,51,.55) 2px,
+      transparent 2px, transparent 34px
+    );
+    border-right:2px solid rgba(156,61,51,.5);
+    pointer-events:none;
+    z-index:1;
+  }
+  .book-inner{
+    position:relative;
+    z-index:2;
+    padding:22px 22px 22px 52px;
+  }
+  .tabs{
+    display:flex;
+    gap:2px;
+    margin-bottom:20px;
+    border-bottom:1px solid var(--paper-line);
+    flex-wrap:wrap;
+  }
+  .tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    padding:9px 12px;
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:var(--ink-soft);
+    border-bottom:2px solid transparent;
+    transition:color .15s;
+  }
+  .tab.active{
+    color:var(--ink);
+    border-bottom-color:var(--brass);
+    font-weight:600;
+  }
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  h2.section-title{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:18px;
+    margin:0 0 12px;
+  }
+  .current-project-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin:-6px 0 14px;
+  }
+  .current-project-tag b{color:var(--brass-dark);}
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .card{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    padding:12px 14px;
+  }
+  .card .lbl{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    margin:0 0 4px;
+  }
+  .card .val{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:19px;
+    margin:0;
+  }
+  .card.income .val{color:var(--income);}
+  .card.expense .val{color:var(--expense);}
+  .card.debt .val{color:var(--debt);}
+  .card.balance .val{color:var(--brass-dark);}
+
+  .cat-breakdown{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    margin-bottom:20px;
+  }
+  .cat-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    padding:6px 0;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .cat-row:last-child{border-bottom:none;}
+  .cat-row .amt{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+
+  table.compare{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  table.compare th, table.compare td{
+    padding:8px 8px;
+    text-align:right;
+    border-bottom:1px solid var(--paper-line);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  table.compare th:first-child, table.compare td:first-child{
+    text-align:left;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+  }
+  table.compare th{
+    background:#EFE7D3;
+    color:var(--ink-soft);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    text-transform:uppercase;
+  }
+  table.compare tr:last-child td{border-bottom:none;}
+
+  form.entry{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:18px;
+  }
+  .field-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:110px;display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:11px;color:var(--ink-soft);}
+  .field input, .field select{
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    padding:8px 9px;
+    border:1px solid var(--paper-line);
+    border-radius:6px;
+    background:#FCFAF3;
+    color:var(--ink);
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--brass);outline-offset:0;}
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 16px;
+    border-radius:7px;
+    border:none;
+    cursor:pointer;
+    color:#fff;
+  }
+  .btn-add.thu{background:var(--income);}
+  .btn-add.thu:hover{background:#345C42;}
+  .btn-add.chi{background:var(--expense);}
+  .btn-add.chi:hover{background:#823329;}
+  .btn-add.debt{background:var(--brass-dark);}
+  .btn-add.debt:hover{background:var(--brass);}
+  .btn-row{display:flex;justify-content:flex-end;}
+  .err{color:var(--expense);font-size:12px;margin:2px 0 0;display:none;}
+
+  .list{display:flex;flex-direction:column;gap:6px;}
+  .row-item{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:8px;
+    padding:10px 12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .row-item .info{min-width:0;}
+  .row-item .name{font-size:14px;font-weight:500;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row-item .meta{font-size:11px;color:var(--ink-soft);margin:0;}
+  .row-item .amount{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:14px;
+    white-space:nowrap;
+  }
+  .row-item.thu .amount{color:var(--income);}
+  .row-item.chi .amount{color:var(--expense);}
+  .row-actions{display:flex;align-items:center;gap:8px;}
+  .del-btn{
+    background:none;border:none;cursor:pointer;color:var(--ink-soft);
+    font-size:16px;line-height:1;padding:2px 4px;
+  }
+  .del-btn:hover{color:var(--expense);}
+  .empty{
+    text-align:center;color:var(--ink-soft);font-size:13px;
+    padding:20px 0;
+  }
+
+  .debt-tag{
+    font-size:10px;
+    font-family:'IBM Plex Mono',monospace;
+    padding:2px 7px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .debt-tag.unpaid{background:var(--debt-bg);color:var(--debt);}
+  .debt-tag.paid{background:#E8ECE7;color:var(--debt-paid);}
+  .paid-toggle{
+    display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);cursor:pointer;
+  }
+  .paid-toggle input{cursor:pointer;}
+
+  .foot-note{
+    text-align:center;
+    color:#8B8067;
+    font-size:11px;
+    margin-top:16px;
+  }
+
+  /* ==== Modal thanh toán / kích hoạt ==== */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,15,10,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:999; padding:16px;
+  }
+  .modal-box{
+    background:var(--paper); color:var(--ink);
+    border-radius:14px; max-width:360px; width:100%;
+    padding:20px 20px 16px; text-align:center;
+    box-shadow:0 12px 40px rgba(0,0,0,0.35);
+    max-height:92vh; overflow-y:auto;
+  }
+  .modal-box h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:19px; color:var(--brass-dark);}
+  .modal-sub{font-size:12px; color:var(--ink-soft); margin:0 0 12px;}
+  .modal-box img.qr-img{
+    width:200px; height:200px; margin:4px auto 14px; display:block;
+    border-radius:8px; border:1px solid var(--paper-line); background:#fff;
+  }
+  .pay-info{
+    background:#fff; border:1px solid var(--paper-line); border-radius:10px;
+    padding:10px 14px; text-align:left; font-size:13px; margin-bottom:14px;
+  }
+  .pay-info .row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0;}
+  .pay-info .row + .row{border-top:1px dashed var(--paper-line);}
+  .pay-info .label{color:var(--ink-soft); font-size:11px;}
+  .pay-info .val{font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+  .pay-info .copy-btn{
+    border:none; background:var(--brass); color:#fff; font-size:10px;
+    padding:3px 8px; border-radius:6px; cursor:pointer; flex-shrink:0;
+  }
+  .pay-info .copy-btn:active{background:var(--brass-dark);}
+  #activation-code-input{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--paper-line);
+    font-size:14px; margin-bottom:10px; text-align:center; font-family:'IBM Plex Mono',monospace;
+    box-sizing:border-box;
+  }
+  .modal-actions{display:flex; gap:8px;}
+  .modal-actions button{
+    flex:1; padding:10px; border-radius:8px; border:none; font-weight:600;
+    font-size:13px; cursor:pointer;
+  }
+  #activation-submit-btn{background:var(--income); color:#fff;}
+  #payment-close-btn{background:#E5DFCB; color:var(--ink);}
+  #payment-error{color:var(--expense); font-size:12px; min-height:16px; margin:0 0 8px;}
+
+  @media (max-width:420px){
+    .cards{grid-template-columns:1fr 1fr;}
+    .book-inner{padding:18px 14px 18px 40px;}
+    .book::before{width:26px;}
+    .project-bar{flex-wrap:wrap;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <p class="eyebrow">Sổ tay công trường</p>
+    <h1>Thu &middot; Chi &middot; Công nợ</h1>
+    <p>Ghi chép thu chi hằng ngày và công nợ, tách riêng theo từng dự án</p>
+  </div>
+
+  <div class="project-bar">
+    <select id="project-select"></select>
+    <button type="button" id="project-add">+ Dự án mới</button>
+    <button type="button" id="project-rename">Đổi tên</button>
+    <button type="button" id="project-export">⬇ Xuất Excel</button>
+  </div>
+  <p class="foot-note" id="sync-status" style="margin-top:-8px;margin-bottom:4px;"></p>
+  <p class="foot-note" id="trial-status" style="margin-top:0;margin-bottom:16px;"></p>
+
+  <div class="book">
+    <div class="book-inner">
+
+      <div class="tabs">
+        <button class="tab active" data-tab="tongquan">Tổng quan</button>
+        <button class="tab" data-tab="thu">Thu</button>
+        <button class="tab" data-tab="chi">Chi</button>
+        <button class="tab" data-tab="congno">Công nợ</button>
+      </div>
+
+      <!-- TONG QUAN -->
+      <div class="panel active" id="panel-tongquan">
+        <h2 class="section-title">Tình hình chung</h2>
+        <p class="current-project-tag">Đang xem dự án: <b id="tq-project-name"></b></p>
+        <div class="cards">
+          <div class="card income">
+            <p class="lbl">Tổng thu</p>
+            <p class="val" id="sum-thu">0 đ</p>
+          </div>
+          <div class="card expense">
+            <p class="lbl">Tổng chi</p>
+            <p class="val" id="sum-chi">0 đ</p>
+          </div>
+          <div class="card debt">
+            <p class="lbl">Công nợ chưa trả</p>
+            <p class="val" id="sum-debt">0 đ</p>
+          </div>
+          <div class="card balance">
+            <p class="lbl">Số dư tạm tính</p>
+            <p class="val" id="sum-balance">0 đ</p>
+          </div>
+        </div>
+
+        <h2 class="section-title">Chi theo hạng mục</h2>
+        <div class="cat-breakdown" id="cat-breakdown"></div>
+
+        <h2 class="section-title">So sánh giữa các dự án</h2>
+        <table class="compare" id="compare-table"></table>
+
+        <p class="foot-note">Số dư tạm tính = Tổng thu − (Tổng chi + Công nợ chưa trả)</p>
+      </div>
+
+      <!-- THU -->
+      <div class="panel" id="panel-thu">
+        <h2 class="section-title">Ghi khoản thu</h2>
+        <p class="current-project-tag">Đang ghi vào dự án: <b id="thu-project-name"></b></p>
+        <form class="entry" id="form-thu">
+          <div class="field-row">
+            <div class="field" style="flex:2;">
+              <label>Nội dung</label>
+              <input type="text" id="thu-name" placeholder="VD: Chủ nhà thanh toán đợt 1...">
+            </div>
+            <div class="field">
+              <label>Số tiền (nghìn đ)</label>
+              <input type="number" id="thu-amount" placeholder="VD: 2350 = 2.350.000" min="0">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Ghi chú (không bắt buộc)</label>
+              <input type="text" id="thu-note" placeholder="VD: chuyển khoản, tiền mặt...">
+            </div>
+          </div>
+          <p class="err" id="thu-err">Nhập nội dung và số tiền lớn hơn 0.</p>
+          <div class="btn-row"><button type="button" class="btn btn-add thu" id="thu-add">Thêm khoản thu</button></div>
+        </form>
+        <div class="list" id="thu-list"></div>
+      </div>
+
+      <!-- CHI -->
+      <div class="panel" id="panel-chi">
+        <h2 class="section-title">Ghi khoản chi</h2>
+        <p class="current-project-tag">Đang ghi vào dự án: <b id="chi-project-name"></b></p>
+        <form class="entry" id="form-chi">
+          <div class="field-row">
+            <div class="field" style="max-width:150px;">
+              <label>Hạng mục</label>
+              <select id="chi-cat">
+                <option>Sản Phẩm</option>
+                <option>Ăn Uống</option>
+                <option>Đi Lại</option>
+                <option>Nhân Công</option>
+                <option>Khác</option>
+              </select>
+            </div>
+            <div class="field" style="flex:2;">
+              <label>Nội dung</label>
+              <input type="text" id="chi-name" placeholder="VD: Cova 4t 22L, ứng công a Đức...">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Số tiền (nghìn đ)</label>
+              <input type="number" id="chi-amount" placeholder="VD: 200 = 200.000" min="0">
+            </div>
+            <div class="field">
+              <label>Ghi chú (không bắt buộc)</label>
+              <input type="text" id="chi-note" placeholder="VD: 2350/thùng, Ninh mua...">
+            </div>
+          </div>
+          <p class="err" id="chi-err">Nhập nội dung và số tiền lớn hơn 0.</p>
+          <div class="btn-row"><button type="button" class="btn btn-add chi" id="chi-add">Thêm khoản chi</button></div>
+        </form>
+        <div class="list" id="chi-list"></div>
+      </div>
+
+      <!-- CONG NO -->
+      <div class="panel" id="panel-congno">
+        <h2 class="section-title">Hàng mua chưa thanh toán</h2>
+        <p class="current-project-tag">Đang ghi vào dự án: <b id="cn-project-name"></b></p>
+        <form class="entry" id="form-congno">
+          <div class="field-row">
+            <div class="field" style="flex:2;">
+              <label>Tên hàng</label>
+              <input type="text" id="cn-name" placeholder="VD: Sơn tràn, bả chỉ...">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Số lượng</label>
+              <input type="number" id="cn-qty" placeholder="1" min="0" value="1">
+            </div>
+            <div class="field">
+              <label>Đơn giá (nghìn đ)</label>
+              <input type="number" id="cn-price" placeholder="VD: 2350 = 2.350.000" min="0">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Ghi chú (ai mua, ...)</label>
+              <input type="text" id="cn-note" placeholder="VD: Mạnh mua, Ninh mua...">
+            </div>
+          </div>
+          <p class="err" id="cn-err">Nhập tên hàng, số lượng và đơn giá hợp lệ.</p>
+          <div class="btn-row"><button type="button" class="btn btn-add debt" id="cn-add">Thêm công nợ</button></div>
+        </form>
+        <div class="list" id="cn-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="foot-note" style="color:#8B8067;">Dữ liệu tự lưu lại giữa các lần mở</p>
+</div>
+
+<div id="payment-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>Kích hoạt Xuất Excel</h3>
+    <p class="modal-sub">Quét mã QR hoặc chuyển khoản theo thông tin bên dưới</p>
+    <img class="qr-img" id="payment-qr-img" src="" alt="Mã QR chuyển khoản">
+    <p style="margin:-8px 0 12px;font-size:13px;font-weight:600;color:var(--brass-dark);">SĐT: 0906 90 27 09</p>
+    <div class="pay-info">
+      <div class="row"><span class="label">Ngân hàng</span><span class="val">ACB</span></div>
+      <div class="row">
+        <span class="label">Số TK</span>
+        <span class="val" id="pay-acc-no">45050387</span>
+        <button type="button" class="copy-btn" data-copy="45050387">Copy</button>
+      </div>
+      <div class="row"><span class="label">Chủ TK</span><span class="val">TRINH XUAN AN</span></div>
+      <div class="row"><span class="label">Số tiền</span><span class="val">136.000đ (vĩnh viễn)</span></div>
+      <div class="row">
+        <span class="label">Nội dung CK</span>
+        <span class="val" id="pay-content"></span>
+        <button type="button" class="copy-btn" id="copy-content-btn">Copy</button>
+      </div>
+    </div>
+    <p class="modal-sub">Chuyển khoản xong, liên hệ admin để nhận mã kích hoạt, rồi nhập vào ô bên dưới:</p>
+    <p id="payment-error"></p>
+    <input type="text" id="activation-code-input" placeholder="Nhập mã kích hoạt...">
+    <div class="modal-actions">
+      <button type="button" id="payment-close-btn">Đóng</button>
+      <button type="button" id="activation-submit-btn">Kích hoạt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'so-thu-chi-data-v2';
+
+// ==== CẤU HÌNH GOOGLE SHEETS (dán link Apps Script của bạn vào đây) ====
+// Xem hướng dẫn lấy link trong phần chat. Nếu để nguyên như mặc định,
+// app vẫn chạy bình thường nhưng chỉ lưu trên trình duyệt này (không đồng bộ Google Sheets).
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRLYU311jxDDksGBazkrrf8n9GUAcKeqDRD_42LCQVnhcUkw2DJa1cCo3G6Z5FgC_i-w/exec";
+
+function sheetsConfigured(){
+  return APPS_SCRIPT_URL && !APPS_SCRIPT_URL.startsWith('DÁN');
+}
+
+async function sheetsLoad(){
+  if(!sheetsConfigured()) return null;
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?action=load');
+    const json = await res.json();
+    if(json && Array.isArray(json.projects)) return json;
+    return null;
+  }catch(e){ console.error('Lỗi tải từ Google Sheets', e); return null; }
+}
+
+async function sheetsPost(action, payload){
+  if(!sheetsConfigured()) return;
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action: action }, payload))
+    });
+  }catch(e){ console.error('Lỗi ghi vào Google Sheets', e); }
+}
+// ==== QUẢN LÝ ID MÁY & KÍCH HOẠT BẰNG MÃ (chống né hạn dùng thử) ====
+// Mỗi trình duyệt/máy có 1 mã ID riêng (lưu trong localStorage). Máy MỚI sẽ
+// KHÔNG được tự động cấp hạn dùng thử nữa — phải nhập đúng "Mã kích hoạt" do
+// bạn (admin) cấp thì mới dùng được tính năng Xuất Excel. Điều này để chặn
+// việc người dùng xoá dữ liệu trình duyệt / dùng ẩn danh để có ID mới miễn phí.
+//
+// CÁCH CẤP MÃ KÍCH HOẠT: mở Google Sheet, vào tab "Codes" (Apps Script tự tạo
+// nếu chưa có), thêm 1 dòng: Code (mã tuỳ ý, VD "KH2026-01") | Days (số ngày
+// hiệu lực, VD 30) | MaxUses (số lần dùng được, để trống hoặc 1 = dùng 1 lần)
+// | UsedCount (để trống, hệ thống tự tăng) | Note (ghi chú tên khách...).
+// Gửi đúng mã đó cho khách để họ nhập vào ô "Nhập mã kích hoạt" khi được yêu cầu.
+//
+// GIA HẠN cho máy đã kích hoạt: vẫn sửa trực tiếp cột Expiry trong tab
+// "Devices" như trước — không cần cấp mã mới cho lần gia hạn.
+const DEVICE_ID_KEY = 'so-thu-chi-device-id';
+const TRIAL_LOCAL_CACHE_KEY = 'so-thu-chi-trial-cache';
+
+let trialInfo = { deviceId: null, firstSeen: null, expiry: null, source: null };
+let trialCheckPromise = null;
+
+function getDeviceId(){
+  let id = null;
+  try{ id = localStorage.getItem(DEVICE_ID_KEY); }catch(e){ /* ignore */ }
+  if(!id){
+    id = 'DEV-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,8).toUpperCase();
+    try{ localStorage.setItem(DEVICE_ID_KEY, id); }catch(e){ /* ignore */ }
+  }
+  return id;
+}
+
+function cacheTrialLocal(info){
+  try{ localStorage.setItem(TRIAL_LOCAL_CACHE_KEY, JSON.stringify(info)); }catch(e){ /* ignore */ }
+}
+function readTrialLocalCache(){
+  try{
+    const v = localStorage.getItem(TRIAL_LOCAL_CACHE_KEY);
+    if(v) return JSON.parse(v);
+  }catch(e){ /* ignore */ }
+  return null;
+}
+
+// Gọi khi mở app: kiểm tra máy này đã được kích hoạt trên Google Sheets chưa.
+// KHÔNG tự cấp hạn dùng thử cho máy mới nữa — chỉ đọc trạng thái hiện có.
+async function checkDeviceTrial(){
+  const deviceId = getDeviceId();
+  trialInfo.deviceId = deviceId;
+
+  if(!sheetsConfigured()){
+    // Chưa nối Google Sheets -> không thể xác thực mã kích hoạt tập trung,
+    // đành cho dùng tự do trên máy này (không có cách nào chặn khi offline hẳn).
+    trialInfo.expiry = null;
+    trialInfo.source = 'no-sheets';
+    return;
+  }
+
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?action=checkDevice&deviceId=' + encodeURIComponent(deviceId));
+    const json = await res.json();
+    if(json && json.found && json.expiry){
+      trialInfo.firstSeen = Number(json.firstSeen) || null;
+      trialInfo.expiry = Number(json.expiry);
+      trialInfo.source = 'sheets';
+      cacheTrialLocal({ firstSeen: trialInfo.firstSeen, expiry: trialInfo.expiry });
+    }else{
+      // Máy chưa từng kích hoạt -> luôn coi là hết hạn cho tới khi nhập đúng mã
+      trialInfo.firstSeen = null;
+      trialInfo.expiry = 0;
+      trialInfo.source = 'not_activated';
+      cacheTrialLocal({ firstSeen: null, expiry: 0 });
+    }
+  }catch(e){
+    console.error('Lỗi kiểm tra trạng thái kích hoạt trên Google Sheets', e);
+    // Mất mạng/lỗi tạm thời -> dùng lại cache gần nhất (nếu có) để không khoá oan
+    const cached = readTrialLocalCache();
+    if(cached && typeof cached.expiry === 'number'){
+      trialInfo.firstSeen = cached.firstSeen;
+      trialInfo.expiry = cached.expiry;
+      trialInfo.source = 'cache';
+    }else{
+      trialInfo.expiry = null;
+      trialInfo.source = 'unknown';
+    }
+  }
+}
+
+function ensureTrialChecked(){
+  if(!trialCheckPromise){
+    trialCheckPromise = checkDeviceTrial().then(()=>{ updateTrialStatusUI(); });
+  }
+  return trialCheckPromise;
+}
+
+function isTrialValid(){
+  if(trialInfo.expiry === null) return true; // không xác thực được (vd. offline hẳn) -> tạm cho phép
+  return Date.now() <= trialInfo.expiry;
+}
+
+// Gửi mã kích hoạt người dùng nhập lên Google Sheets để xác thực.
+// Trả về { ok: true } nếu hợp lệ (đã cập nhật trialInfo), hoặc { ok:false, message }.
+async function activateWithCode(code){
+  if(!sheetsConfigured()){
+    return { ok: false, message: 'Chưa cấu hình Google Sheets nên không thể kích hoạt bằng mã.' };
+  }
+  const deviceId = getDeviceId();
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'activateCode', deviceId: deviceId, code: code })
+    });
+    const json = await res.json();
+    if(json && json.ok){
+      trialInfo.expiry = Number(json.expiry);
+      trialInfo.firstSeen = Date.now();
+      trialInfo.source = 'sheets';
+      cacheTrialLocal({ firstSeen: trialInfo.firstSeen, expiry: trialInfo.expiry });
+      updateTrialStatusUI();
+      return { ok: true };
+    }
+    return { ok: false, message: (json && json.message) || 'Mã kích hoạt không hợp lệ.' };
+  }catch(e){
+    console.error('Lỗi kích hoạt mã', e);
+    return { ok: false, message: 'Không kết nối được để kích hoạt. Kiểm tra mạng rồi thử lại.' };
+  }
+}
+
+function updateTrialStatusUI(){
+  const el = document.getElementById('trial-status');
+  if(!el) return;
+  if(trialInfo.expiry === null){
+    el.textContent = '';
+    return;
+  }
+  if(trialInfo.source === 'not_activated'){
+    el.textContent = 'Xuất Excel — chưa kích hoạt, cần nhập mã kích hoạt';
+    el.style.color = '#E08A7D';
+    return;
+  }
+  const daysLeft = Math.ceil((trialInfo.expiry - Date.now()) / (24*60*60*1000));
+  if(daysLeft > 3650){ // hơn 10 năm -> coi như vĩnh viễn
+    el.textContent = 'Xuất Excel — đã kích hoạt vĩnh viễn';
+    el.style.color = '#7FBF95';
+  }else if(daysLeft > 0){
+    el.textContent = `Xuất Excel — còn ${daysLeft} ngày`;
+    el.style.color = daysLeft <= 5 ? '#C99B6B' : '#7FBF95';
+  }else{
+    el.textContent = `Xuất Excel đã hết hạn. Vui lòng liên hệ để được gia hạn.`;
+    el.style.color = '#E08A7D';
+  }
+}
+
+let data = { projects: [], currentProjectId: null, tc: [], cn: [] };
+
+function fmt(n){
+  n = Math.round(Number(n)||0);
+  return n.toLocaleString('vi-VN') + ' VND';
+}
+function toReal(thousandInput){
+  return (Number(thousandInput)||0) * 1000;
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function cacheLocal(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }catch(e){ /* ignore */ }
+}
+function loadLocalCache(){
+  try{
+    const v = localStorage.getItem(STORE_KEY);
+    if(v) return JSON.parse(v);
+  }catch(e){ /* ignore */ }
+  return null;
+}
+
+async function loadData(){
+  const remote = await sheetsLoad();
+  if(remote){
+    data.projects = (remote.projects||[]).map(p=>({ id:String(p.id), name:p.name }));
+    data.tc = (remote.tc||[]).map(x=>({
+      id:String(x.id), projectId:String(x.projectId), type:x.type, category:x.category,
+      name:x.name, amount:Number(x.amount)||0, note:x.note||'', ts:Number(x.ts)||Date.now()
+    }));
+    data.cn = (remote.cn||[]).map(x=>({
+      id:String(x.id), projectId:String(x.projectId), name:x.name, qty:Number(x.qty)||0,
+      price:Number(x.price)||0, amount:Number(x.amount)||0, note:x.note||'',
+      paid: x.paid===true || x.paid==='TRUE' || x.paid==='true', ts:Number(x.ts)||Date.now()
+    }));
+  }else{
+    const cached = loadLocalCache();
+    if(cached && Array.isArray(cached.projects) && cached.projects.length){
+      data = cached;
+    }else if(cached && (Array.isArray(cached.tc) || Array.isArray(cached.cn))){
+      migrateOldFormat(cached);
+    }
+  }
+
+  if(!data.projects || data.projects.length===0){
+    const p = { id: uid(), name: 'Dự án 1' };
+    data.projects = [p];
+    data.currentProjectId = p.id;
+    sheetsPost('addProject', p);
+  }
+  if(!data.currentProjectId || !data.projects.find(p=>p.id===data.currentProjectId)){
+    data.currentProjectId = data.projects[0].id;
+  }
+  renderProjectSelect();
+  render();
+  cacheLocal();
+}
+
+function migrateOldFormat(parsed){
+  const p = { id: uid(), name: 'Dự án 1' };
+  data.projects = [p];
+  data.currentProjectId = p.id;
+  data.tc = (parsed.tc||[]).map(x=>({...x, projectId: p.id}));
+  data.cn = (parsed.cn||[]).map(x=>({...x, projectId: p.id}));
+  sheetsPost('addProject', p);
+}
+
+function currentProject(){
+  return data.projects.find(p=>p.id===data.currentProjectId) || data.projects[0];
+}
+
+function renderProjectSelect(){
+  const sel = document.getElementById('project-select');
+  sel.innerHTML = data.projects.map(p=>`<option value="${p.id}" ${p.id===data.currentProjectId?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+}
+
+document.getElementById('project-select').addEventListener('change', (e)=>{
+  data.currentProjectId = e.target.value;
+  cacheLocal();
+  render();
+});
+
+document.getElementById('project-add').addEventListener('click', ()=>{
+  const name = prompt('Tên dự án mới:');
+  if(!name || !name.trim()) return;
+  const p = { id: uid(), name: name.trim() };
+  data.projects.push(p);
+  data.currentProjectId = p.id;
+  renderProjectSelect();
+  cacheLocal();
+  render();
+  sheetsPost('addProject', p);
+});
+
+document.getElementById('project-rename').addEventListener('click', ()=>{
+  const p = currentProject();
+  const name = prompt('Đổi tên dự án:', p.name);
+  if(!name || !name.trim()) return;
+  p.name = name.trim();
+  renderProjectSelect();
+  cacheLocal();
+  render();
+  sheetsPost('renameProject', { id: p.id, name: p.name });
+});
+
+// ==== XUẤT EXCEL THEO TỪNG DỰ ÁN (mỗi tab -> 1 sheet riêng) ====
+function formatDateVN(ts){
+  const d = new Date(Number(ts)||Date.now());
+  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ==== TIỆN ÍCH ĐỊNH DẠNG EXCEL (viền, màu, số VND) ====
+const XL_THIN = { style: 'thin', color: { argb: 'FFB8AA88' } };
+const XL_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8DDB8' } };
+const XL_ZEBRA_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7F3E4' } };
+const XL_VND_FMT = '#,##0" VND"';
+const XL_NUM_FMT = '#,##0';
+
+// Kẻ viền đầy đủ 4 cạnh quanh từng ô tiêu đề + tô nền + in đậm
+function styleHeaderRow(row, colCount){
+  for(let c=1;c<=colCount;c++){
+    const cell = row.getCell(c);
+    cell.font = { bold:true, color:{argb:'FF3C2E22'} };
+    cell.fill = XL_HEADER_FILL;
+    cell.border = { top:XL_THIN, bottom:XL_THIN, left:XL_THIN, right:XL_THIN };
+    cell.alignment = { vertical:'middle', horizontal: c===1 ? 'left' : 'right' };
+  }
+}
+
+// Chỉ kẻ viền dọc theo cột (line theo cột) cho các dòng dữ liệu, có thể tô màu xen kẽ
+function styleBodyRow(row, colCount, zebra){
+  for(let c=1;c<=colCount;c++){
+    const cell = row.getCell(c);
+    cell.border = { left:XL_THIN, right:XL_THIN };
+    if(zebra) cell.fill = XL_ZEBRA_FILL;
+  }
+}
+
+async function downloadWorkbook(wb, filename){
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function exportProjectExcel(){
+  if(typeof ExcelJS === 'undefined'){
+    alert('Không tải được thư viện xuất Excel. Vui lòng kiểm tra kết nối mạng rồi thử lại.');
+    return;
+  }
+  const p = currentProject();
+  if(!p){ alert('Chưa có dự án nào để xuất.'); return; }
+  const pid = p.id;
+
+  const tcForProject = data.tc.filter(x=>x.projectId===pid);
+  const cnForProject = data.cn.filter(x=>x.projectId===pid);
+
+  const totalThu = tcForProject.filter(x=>x.type==='thu').reduce((s,x)=>s+Number(x.amount||0),0);
+  const totalChi = tcForProject.filter(x=>x.type==='chi').reduce((s,x)=>s+Number(x.amount||0),0);
+  const totalDebtUnpaid = cnForProject.filter(x=>!x.paid).reduce((s,x)=>s+Number(x.amount||0),0);
+  const balance = totalThu - (totalChi + totalDebtUnpaid);
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Sổ Thu Chi';
+  wb.created = new Date();
+
+  // ---- Sheet 1: Tổng quan ----
+  const wsTq = wb.addWorksheet('Tổng quan');
+  wsTq.columns = [{width:26},{width:18},{width:14},{width:14},{width:14}];
+
+  wsTq.addRow(['SỔ THU CHI & CÔNG NỢ — TỔNG QUAN']).font = { bold:true, size:14, color:{argb:'FF7C5A22'} };
+  wsTq.addRow(['Dự án', p.name]);
+  wsTq.addRow(['Ngày xuất', new Date().toLocaleString('vi-VN')]);
+  wsTq.addRow([]);
+
+  let r = wsTq.addRow(['Chỉ tiêu', 'Số tiền (VND)']);
+  styleHeaderRow(r, 2);
+  const overviewRows = [
+    ['Tổng thu', totalThu], ['Tổng chi', totalChi],
+    ['Công nợ chưa trả', totalDebtUnpaid], ['Số dư tạm tính', balance]
+  ];
+  overviewRows.forEach(row=>{
+    const rr = wsTq.addRow(row);
+    styleBodyRow(rr, 2, false);
+    rr.getCell(2).numFmt = XL_VND_FMT;
+    rr.getCell(2).alignment = { horizontal:'right' };
+  });
+  wsTq.addRow([]);
+
+  wsTq.addRow(['CHI THEO HẠNG MỤC']).font = { bold:true, color:{argb:'FF7C5A22'} };
+  r = wsTq.addRow(['Hạng mục', 'Số tiền (VND)']);
+  styleHeaderRow(r, 2);
+  const cats = ['Sản Phẩm','Ăn Uống','Đi Lại','Nhân Công','Khác'];
+  const catRows = cats.map(c=>{
+    const sum = tcForProject.filter(x=>x.type==='chi' && x.category===c).reduce((s,x)=>s+Number(x.amount||0),0);
+    return [c, sum];
+  }).filter(row=>row[1]>0);
+  (catRows.length ? catRows : [['(Chưa có khoản chi nào)', '']]).forEach((row,i)=>{
+    const rr = wsTq.addRow(row);
+    styleBodyRow(rr, 2, i%2===1);
+    if(typeof row[1]==='number'){ rr.getCell(2).numFmt = XL_VND_FMT; rr.getCell(2).alignment = { horizontal:'right' }; }
+  });
+  wsTq.addRow([]);
+
+  wsTq.addRow(['SO SÁNH GIỮA CÁC DỰ ÁN']).font = { bold:true, color:{argb:'FF7C5A22'} };
+  r = wsTq.addRow(['Dự án', 'Thu', 'Chi', 'Công nợ', 'Số dư']);
+  styleHeaderRow(r, 5);
+  data.projects.forEach((proj,i)=>{
+    const t = data.tc.filter(x=>x.projectId===proj.id);
+    const c = data.cn.filter(x=>x.projectId===proj.id);
+    const th = t.filter(x=>x.type==='thu').reduce((s,x)=>s+Number(x.amount||0),0);
+    const ch = t.filter(x=>x.type==='chi').reduce((s,x)=>s+Number(x.amount||0),0);
+    const dn = c.filter(x=>!x.paid).reduce((s,x)=>s+Number(x.amount||0),0);
+    const rr = wsTq.addRow([proj.name, th, ch, dn, th-(ch+dn)]);
+    styleBodyRow(rr, 5, i%2===1);
+    [2,3,4,5].forEach(ci=>{ rr.getCell(ci).numFmt = XL_VND_FMT; rr.getCell(ci).alignment = { horizontal:'right' }; });
+  });
+
+  // ---- Sheet 2: Thu (bảng màu xen kẽ) ----
+  const wsThu = wb.addWorksheet('Thu');
+  wsThu.columns = [{width:18},{width:34},{width:26},{width:16}];
+  r = wsThu.addRow(['Ngày', 'Nội dung', 'Ghi chú', 'Số tiền (VND)']);
+  styleHeaderRow(r, 4);
+  const thuItems = tcForProject.filter(x=>x.type==='thu');
+  thuItems.forEach((x,i)=>{
+    const rr = wsThu.addRow([formatDateVN(x.ts), x.name, x.note||'', Number(x.amount||0)]);
+    styleBodyRow(rr, 4, i%2===1);
+    rr.getCell(4).numFmt = XL_VND_FMT; rr.getCell(4).alignment = { horizontal:'right' };
+  });
+  wsThu.addRow([]);
+  r = wsThu.addRow(['', '', 'Tổng thu', totalThu]);
+  r.getCell(3).font = { bold:true }; r.getCell(4).font = { bold:true };
+  r.getCell(4).numFmt = XL_VND_FMT; r.getCell(4).alignment = { horizontal:'right' };
+  styleHeaderRow(r, 4);
+
+  // ---- Sheet 3: Chi (bảng màu xen kẽ) ----
+  const wsChi = wb.addWorksheet('Chi');
+  wsChi.columns = [{width:18},{width:14},{width:34},{width:26},{width:16}];
+  r = wsChi.addRow(['Ngày', 'Hạng mục', 'Nội dung', 'Ghi chú', 'Số tiền (VND)']);
+  styleHeaderRow(r, 5);
+  const chiItems = tcForProject.filter(x=>x.type==='chi');
+  chiItems.forEach((x,i)=>{
+    const rr = wsChi.addRow([formatDateVN(x.ts), x.category, x.name, x.note||'', Number(x.amount||0)]);
+    styleBodyRow(rr, 5, i%2===1);
+    rr.getCell(5).numFmt = XL_VND_FMT; rr.getCell(5).alignment = { horizontal:'right' };
+  });
+  wsChi.addRow([]);
+  r = wsChi.addRow(['', '', '', 'Tổng chi', totalChi]);
+  r.getCell(4).font = { bold:true }; r.getCell(5).font = { bold:true };
+  r.getCell(5).numFmt = XL_VND_FMT; r.getCell(5).alignment = { horizontal:'right' };
+  styleHeaderRow(r, 5);
+
+  // ---- Sheet 4: Công nợ ----
+  const wsCn = wb.addWorksheet('Công nợ');
+  wsCn.columns = [{width:18},{width:30},{width:10},{width:16},{width:18},{width:26},{width:12}];
+  r = wsCn.addRow(['Ngày', 'Tên hàng', 'Số lượng', 'Đơn giá (VND)', 'Thành tiền (VND)', 'Ghi chú', 'Trạng thái']);
+  styleHeaderRow(r, 7);
+  cnForProject.forEach((x,i)=>{
+    const rr = wsCn.addRow([formatDateVN(x.ts), x.name, Number(x.qty||0), Number(x.price||0), Number(x.amount||0), x.note||'', x.paid?'Đã trả':'Chưa trả']);
+    styleBodyRow(rr, 7, i%2===1);
+    rr.getCell(3).numFmt = XL_NUM_FMT; rr.getCell(3).alignment = { horizontal:'right' };
+    rr.getCell(4).numFmt = XL_VND_FMT; rr.getCell(4).alignment = { horizontal:'right' };
+    rr.getCell(5).numFmt = XL_VND_FMT; rr.getCell(5).alignment = { horizontal:'right' };
+  });
+  wsCn.addRow([]);
+  r = wsCn.addRow(['', '', '', '', 'Công nợ chưa trả', totalDebtUnpaid, '']);
+  r.getCell(5).font = { bold:true }; r.getCell(6).font = { bold:true };
+  r.getCell(6).numFmt = XL_VND_FMT; r.getCell(6).alignment = { horizontal:'right' };
+  styleHeaderRow(r, 7);
+
+  const safeName = p.name.replace(/[\\/:*?"<>|]/g,'_').trim() || 'DuAn';
+  const dateStr = new Date().toISOString().slice(0,10);
+  await downloadWorkbook(wb, `SoThuChi_${safeName}_${dateStr}.xlsx`);
+}
+
+document.getElementById('project-export').addEventListener('click', async ()=>{
+  const btn = document.getElementById('project-export');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Đang kiểm tra...';
+  try{
+    await ensureTrialChecked();
+    if(!isTrialValid()){
+      openPaymentModal();
+      return;
+    }
+    await exportProjectExcel();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+    updateTrialStatusUI();
+  }
+});
+
+// ==== MODAL THANH TOÁN / KÍCH HOẠT ====
+const BANK_ACCOUNT_NO = '45050387';
+const BANK_ID = 'acb'; // mã ngân hàng dùng cho VietQR (ACB)
+const BANK_ACCOUNT_NAME = 'TRINH XUAN AN';
+const ACTIVATION_PRICE = 136000;
+
+function buildVietQrUrl(deviceId){
+  const base = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT_NO}-compact2.png`;
+  const params = new URLSearchParams({
+    amount: String(ACTIVATION_PRICE),
+    addInfo: deviceId,
+    accountName: BANK_ACCOUNT_NAME
+  });
+  return base + '?' + params.toString();
+}
+
+function openPaymentModal(){
+  const deviceId = getDeviceId();
+  document.getElementById('payment-qr-img').src = buildVietQrUrl(deviceId);
+  document.getElementById('pay-content').textContent = deviceId;
+  document.getElementById('payment-error').textContent = '';
+  document.getElementById('activation-code-input').value = '';
+  document.getElementById('payment-modal').style.display = 'flex';
+}
+function closePaymentModal(){
+  document.getElementById('payment-modal').style.display = 'none';
+}
+
+document.getElementById('payment-close-btn').addEventListener('click', closePaymentModal);
+
+document.querySelectorAll('.copy-btn[data-copy]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const text = b.getAttribute('data-copy');
+    navigator.clipboard?.writeText(text).then(()=>{
+      const old = b.textContent; b.textContent = 'Đã copy'; setTimeout(()=>b.textContent = old, 1200);
+    }).catch(()=>{});
+  });
+});
+document.getElementById('copy-content-btn').addEventListener('click', ()=>{
+  const text = document.getElementById('pay-content').textContent;
+  navigator.clipboard?.writeText(text).then(()=>{
+    const b = document.getElementById('copy-content-btn');
+    const old = b.textContent; b.textContent = 'Đã copy'; setTimeout(()=>b.textContent = old, 1200);
+  }).catch(()=>{});
+});
+
+document.getElementById('activation-submit-btn').addEventListener('click', async ()=>{
+  const input = document.getElementById('activation-code-input');
+  const errEl = document.getElementById('payment-error');
+  const code = (input.value || '').trim();
+  if(!code){ errEl.textContent = 'Vui lòng nhập mã kích hoạt.'; return; }
+  const submitBtn = document.getElementById('activation-submit-btn');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Đang kiểm tra...';
+  errEl.textContent = '';
+  try{
+    const result = await activateWithCode(code);
+    if(!result.ok){
+      errEl.textContent = result.message;
+      return;
+    }
+    closePaymentModal();
+    await exportProjectExcel();
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  }
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('thu-add').addEventListener('click', async ()=>{
+  const name = document.getElementById('thu-name').value.trim();
+  const rawAmount = parseFloat(document.getElementById('thu-amount').value);
+  const amount = toReal(rawAmount);
+  const note = document.getElementById('thu-note').value.trim();
+  const err = document.getElementById('thu-err');
+  if(!name || !rawAmount || rawAmount <= 0){ err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const entry = { id: uid(), projectId: data.currentProjectId, type:'thu', category:'Thu', name, amount, note, ts: Date.now() };
+  data.tc.unshift(entry);
+  document.getElementById('thu-name').value = '';
+  document.getElementById('thu-amount').value = '';
+  document.getElementById('thu-note').value = '';
+  cacheLocal();
+  render();
+  await sheetsPost('addTc', entry);
+});
+
+document.getElementById('chi-add').addEventListener('click', async ()=>{
+  const cat = document.getElementById('chi-cat').value;
+  const name = document.getElementById('chi-name').value.trim();
+  const rawAmount = parseFloat(document.getElementById('chi-amount').value);
+  const amount = toReal(rawAmount);
+  const note = document.getElementById('chi-note').value.trim();
+  const err = document.getElementById('chi-err');
+  if(!name || !rawAmount || rawAmount <= 0){ err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const entry = { id: uid(), projectId: data.currentProjectId, type:'chi', category:cat, name, amount, note, ts: Date.now() };
+  data.tc.unshift(entry);
+  document.getElementById('chi-name').value = '';
+  document.getElementById('chi-amount').value = '';
+  document.getElementById('chi-note').value = '';
+  cacheLocal();
+  render();
+  await sheetsPost('addTc', entry);
+});
+
+document.getElementById('cn-add').addEventListener('click', async ()=>{
+  const name = document.getElementById('cn-name').value.trim();
+  const qty = parseFloat(document.getElementById('cn-qty').value);
+  const rawPrice = parseFloat(document.getElementById('cn-price').value);
+  const price = toReal(rawPrice);
+  const note = document.getElementById('cn-note').value.trim();
+  const err = document.getElementById('cn-err');
+  if(!name || !(qty >= 0) || !(rawPrice >= 0) || qty*price <= 0){ err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const entry = { id: uid(), projectId: data.currentProjectId, name, qty, price, amount: qty*price, note, paid:false, ts: Date.now() };
+  data.cn.unshift(entry);
+  document.getElementById('cn-name').value = '';
+  document.getElementById('cn-qty').value = '1';
+  document.getElementById('cn-price').value = '';
+  document.getElementById('cn-note').value = '';
+  cacheLocal();
+  render();
+  await sheetsPost('addCn', entry);
+});
+
+async function deleteTc(id){
+  data.tc = data.tc.filter(x=>x.id!==id);
+  cacheLocal();
+  render();
+  await sheetsPost('deleteTc', { id });
+}
+async function deleteCn(id){
+  data.cn = data.cn.filter(x=>x.id!==id);
+  cacheLocal();
+  render();
+  await sheetsPost('deleteCn', { id });
+}
+async function togglePaid(id){
+  const item = data.cn.find(x=>x.id===id);
+  if(item){
+    item.paid = !item.paid;
+    cacheLocal();
+    render();
+    await sheetsPost('togglePaid', { id, paid: item.paid });
+  }
+}
+
+function render(){
+  const pid = data.currentProjectId;
+  const pName = currentProject() ? currentProject().name : '';
+  ['tq-project-name','thu-project-name','chi-project-name','cn-project-name'].forEach(id=>{
+    document.getElementById(id).textContent = pName;
+  });
+
+  const tcForProject = data.tc.filter(x=>x.projectId===pid);
+  const cnForProject = data.cn.filter(x=>x.projectId===pid);
+
+  const totalThu = tcForProject.filter(x=>x.type==='thu').reduce((s,x)=>s+Number(x.amount||0),0);
+  const totalChi = tcForProject.filter(x=>x.type==='chi').reduce((s,x)=>s+Number(x.amount||0),0);
+  const totalDebtUnpaid = cnForProject.filter(x=>!x.paid).reduce((s,x)=>s+Number(x.amount||0),0);
+  const balance = totalThu - (totalChi + totalDebtUnpaid);
+
+  document.getElementById('sum-thu').textContent = fmt(totalThu);
+  document.getElementById('sum-chi').textContent = fmt(totalChi);
+  document.getElementById('sum-debt').textContent = fmt(totalDebtUnpaid);
+  const balEl = document.getElementById('sum-balance');
+  balEl.textContent = fmt(balance);
+  balEl.style.color = balance < 0 ? 'var(--expense)' : 'var(--brass-dark)';
+
+  const cats = ['Sản Phẩm','Ăn Uống','Đi Lại','Nhân Công','Khác'];
+  const catBox = document.getElementById('cat-breakdown');
+  const rows = cats.map(c=>{
+    const sum = tcForProject.filter(x=>x.type==='chi' && x.category===c).reduce((s,x)=>s+Number(x.amount||0),0);
+    return {c, sum};
+  }).filter(r=>r.sum>0);
+  catBox.innerHTML = rows.length===0
+    ? '<p class="empty" style="padding:6px 0;">Chưa có khoản chi nào</p>'
+    : rows.map(r=>`<div class="cat-row"><span>${r.c}</span><span class="amt">${fmt(r.sum)}</span></div>`).join('');
+
+  const cmp = document.getElementById('compare-table');
+  const cmpRows = data.projects.map(p=>{
+    const t = data.tc.filter(x=>x.projectId===p.id);
+    const c = data.cn.filter(x=>x.projectId===p.id);
+    const th = t.filter(x=>x.type==='thu').reduce((s,x)=>s+Number(x.amount||0),0);
+    const ch = t.filter(x=>x.type==='chi').reduce((s,x)=>s+Number(x.amount||0),0);
+    const dn = c.filter(x=>!x.paid).reduce((s,x)=>s+Number(x.amount||0),0);
+    return { name:p.name, th, ch, dn, bal: th-(ch+dn) };
+  });
+  cmp.innerHTML = `
+    <tr><th>Dự án</th><th>Thu</th><th>Chi</th><th>Công nợ</th><th>Số dư</th></tr>
+    ${cmpRows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${fmt(r.th)}</td><td>${fmt(r.ch)}</td><td>${fmt(r.dn)}</td><td>${fmt(r.bal)}</td></tr>`).join('')}
+  `;
+
+  const thuList = document.getElementById('thu-list');
+  const thuItems = tcForProject.filter(x=>x.type==='thu');
+  thuList.innerHTML = thuItems.length===0
+    ? '<p class="empty">Chưa có khoản thu nào trong dự án này.</p>'
+    : thuItems.map(x=>`
+      <div class="row-item thu">
+        <div class="info">
+          <p class="name">${escapeHtml(x.name)}</p>
+          <p class="meta">${x.note ? escapeHtml(x.note) : 'Thu'}</p>
+        </div>
+        <div class="row-actions">
+          <span class="amount">+${fmt(x.amount)}</span>
+          <button class="del-btn" aria-label="Xóa" onclick="deleteTc('${x.id}')">&times;</button>
+        </div>
+      </div>
+    `).join('');
+
+  const chiList = document.getElementById('chi-list');
+  const chiItems = tcForProject.filter(x=>x.type==='chi');
+  chiList.innerHTML = chiItems.length===0
+    ? '<p class="empty">Chưa có khoản chi nào trong dự án này.</p>'
+    : chiItems.map(x=>`
+      <div class="row-item chi">
+        <div class="info">
+          <p class="name">${escapeHtml(x.name)}</p>
+          <p class="meta">${x.category}${x.note ? ' · ' + escapeHtml(x.note) : ''}</p>
+        </div>
+        <div class="row-actions">
+          <span class="amount">−${fmt(x.amount)}</span>
+          <button class="del-btn" aria-label="Xóa" onclick="deleteTc('${x.id}')">&times;</button>
+        </div>
+      </div>
+    `).join('');
+
+  const cnList = document.getElementById('cn-list');
+  cnList.innerHTML = cnForProject.length===0
+    ? '<p class="empty">Chưa có công nợ nào trong dự án này.</p>'
+    : cnForProject.map(x=>`
+      <div class="row-item">
+        <div class="info">
+          <p class="name">${escapeHtml(x.name)}</p>
+          <p class="meta">${x.qty} x ${fmt(x.price)}${x.note ? ' · ' + escapeHtml(x.note) : ''}</p>
+        </div>
+        <div class="row-actions">
+          <span class="debt-tag ${x.paid?'paid':'unpaid'}">${x.paid?'Đã trả':'Chưa trả'}</span>
+          <span class="amount" style="color:${x.paid?'var(--debt-paid)':'var(--debt)'}">${fmt(x.amount)}</span>
+          <label class="paid-toggle">
+            <input type="checkbox" ${x.paid?'checked':''} onchange="togglePaid('${x.id}')">
+          </label>
+          <button class="del-btn" aria-label="Xóa" onclick="deleteCn('${x.id}')">&times;</button>
+        </div>
+      </div>
+    `).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const statusEl = document.getElementById('sync-status');
+if(sheetsConfigured()){
+  statusEl.textContent = 'Dữ liệu chỉ lưu trên trình duyệt này - hãy xuất qua Excel để lưu dữ liệu';
+  statusEl.style.color = '#7FBF95';
+}else{
+  statusEl.textContent = 'Dữ liệu chỉ lưu trên trình duyệt này - hãy xuất qua Excel để lưu dữ liệu';
+  statusEl.style.color = '#C99B6B';
+}
+loadData();
+ensureTrialChecked();
+</script>
+</body>
+</html>
