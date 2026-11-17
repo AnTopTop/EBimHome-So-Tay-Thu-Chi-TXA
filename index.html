@@ -390,6 +390,50 @@
     .book::before{width:26px;}
     .project-bar{flex-wrap:wrap;}
   }
+
+  /* ==== CHẤM CÔNG ==== */
+  .ts-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .ts-toolbar .grow{flex:1;}
+  .ts-btn{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+    padding:8px 12px;border-radius:8px;border:1px solid var(--paper-line);
+    background:#fff;color:var(--ink);cursor:pointer;
+  }
+  .ts-btn:hover{border-color:var(--brass);}
+  .ts-btn.primary{background:var(--income);border-color:var(--income);color:#fff;}
+  .ts-btn.danger{color:var(--expense);}
+  .ts-btn:disabled{opacity:.6;cursor:default;}
+  #ts-month{
+    font-family:'IBM Plex Mono',monospace;font-size:14px;padding:7px 8px;
+    border:1px solid var(--paper-line);border-radius:8px;background:#fff;color:var(--ink);
+  }
+  .ts-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .ts-chip{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 12px;
+    border-radius:999px;border:1px solid var(--paper-line);background:#fff;
+    color:var(--ink-soft);cursor:pointer;
+  }
+  .ts-chip.active{background:var(--kraft-2);border-color:var(--kraft-2);color:#F2ECD9;font-weight:600;}
+  .ts-chip.add{border-style:dashed;color:var(--brass-dark);}
+  .ts-worker-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .ts-worker-head h3{font-family:'Fraunces',serif;font-size:17px;margin:0;flex:1;min-width:120px;}
+  table.ts-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);overflow:hidden;}
+  table.ts-table th,table.ts-table td{padding:5px 8px;border-bottom:1px solid #E6DEC3;font-size:13px;text-align:center;}
+  table.ts-table th{background:#E8DDB8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--kraft-2);}
+  table.ts-table td:first-child{font-family:'IBM Plex Mono',monospace;}
+  table.ts-table tr.sun td{background:var(--expense-bg);color:var(--expense);font-weight:600;}
+  table.ts-table tr.today td:first-child{box-shadow:inset 3px 0 0 var(--brass);}
+  table.ts-table tfoot td{background:#F7F3E4;font-weight:600;font-family:'IBM Plex Mono',monospace;border-bottom:none;}
+  table.ts-table.sum td:first-child{text-align:left;font-family:'Inter',sans-serif;}
+  table.ts-table.sum tbody tr{cursor:pointer;}
+  .ts-in{
+    width:100%;max-width:110px;text-align:center;padding:5px 4px;font-size:16px;
+    font-family:'IBM Plex Mono',monospace;border:1px solid var(--paper-line);
+    border-radius:6px;background:#fff;color:var(--ink);
+  }
+  .ts-in:focus{outline:2px solid var(--brass);outline-offset:0;}
+  .ts-msg{font-size:12px;min-height:16px;margin:8px 0 0;color:var(--ink-soft);}
+  .ts-msg.err{color:var(--expense);font-weight:600;}
 </style>
 </head>
 <body>
@@ -418,6 +462,7 @@
         <button class="tab" data-tab="thu">Thu</button>
         <button class="tab" data-tab="chi">Chi</button>
         <button class="tab" data-tab="congno">Công nợ</button>
+        <button class="tab" data-tab="chamcong">Chấm công</button>
       </div>
 
       <!-- TONG QUAN -->
@@ -547,6 +592,23 @@
           <div class="btn-row"><button type="button" class="btn btn-add debt" id="cn-add">Thêm công nợ</button></div>
         </form>
         <div class="list" id="cn-list"></div>
+      </div>
+
+      <!-- CHAM CONG -->
+      <div class="panel" id="panel-chamcong">
+        <h2 class="section-title">Chấm công nhân công</h2>
+        <p class="current-project-tag">Đang chấm công cho dự án: <b id="cc-project-name"></b></p>
+        <div class="ts-toolbar">
+          <button type="button" class="ts-btn" id="ts-prev" aria-label="Tháng trước">&lsaquo;</button>
+          <input type="month" id="ts-month">
+          <button type="button" class="ts-btn" id="ts-next" aria-label="Tháng sau">&rsaquo;</button>
+          <span class="grow"></span>
+          <button type="button" class="ts-btn primary" id="ts-export">⬇ Xuất Excel</button>
+        </div>
+        <div class="ts-subtabs" id="ts-subtabs"></div>
+        <div id="ts-body"></div>
+        <p class="ts-msg" id="ts-msg"></p>
+        <p class="foot-note">Công: nhập 1 (cả ngày) hoặc 0.5 (nửa ngày), để trống = nghỉ. Tăng ca: nhập số giờ, để trống = không tăng ca.</p>
       </div>
 
     </div>
@@ -1055,6 +1117,7 @@ document.getElementById('project-export').addEventListener('click', async ()=>{
   try{
     await ensureTrialChecked();
     if(!isTrialValid()){
+      pendingExport = exportProjectExcel;
       openPaymentModal();
       return;
     }
@@ -1129,7 +1192,7 @@ document.getElementById('activation-submit-btn').addEventListener('click', async
       return;
     }
     closePaymentModal();
-    await exportProjectExcel();
+    await (pendingExport || exportProjectExcel)();
   }finally{
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
@@ -1227,6 +1290,7 @@ async function togglePaid(id){
 
 function render(){
   const pid = data.currentProjectId;
+  if(typeof renderTimesheet === 'function') renderTimesheet();
   const pName = currentProject() ? currentProject().name : '';
   ['tq-project-name','thu-project-name','chi-project-name','cn-project-name'].forEach(id=>{
     document.getElementById(id).textContent = pName;
@@ -1329,6 +1393,308 @@ function render(){
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// ==== CHẤM CÔNG NHÂN CÔNG ====
+const TS_KEY = 'so-thu-chi-chamcong-v1';
+let pendingExport = null; // hàm xuất Excel đang chờ kích hoạt mã
+let ts = { workers: [], att: {}, seeded: {}, month: '' };
+let tsView = 'summary';
+const TS_DOW = ['CN','T2','T3','T4','T5','T6','T7'];
+
+function tsMonthKey(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+function tsLoad(){
+  try{
+    const v = localStorage.getItem(TS_KEY);
+    if(v){ const o = JSON.parse(v); if(o && Array.isArray(o.workers)) ts = Object.assign(ts, o); }
+  }catch(e){ /* ignore */ }
+  if(!ts.att) ts.att = {};
+  if(!ts.seeded) ts.seeded = {};
+  if(!/^\d{4}-\d{2}$/.test(ts.month || '')) ts.month = tsMonthKey(new Date());
+}
+function tsSave(){ try{ localStorage.setItem(TS_KEY, JSON.stringify(ts)); }catch(e){ /* ignore */ } }
+function tsDays(month){
+  const [y,m] = month.split('-').map(Number);
+  const n = new Date(y, m, 0).getDate();
+  const arr = [];
+  for(let d=1; d<=n; d++){
+    arr.push({ key: month + '-' + String(d).padStart(2,'0'), day: d, mon: m, year: y, dow: new Date(y, m-1, d).getDay() });
+  }
+  return arr;
+}
+function tsWorkers(){ return ts.workers.filter(w=>w.projectId===data.currentProjectId); }
+function tsTotals(wid, days){
+  let c = 0, ot = 0;
+  const a = ts.att[wid] || {};
+  days.forEach(d=>{ const e = a[d.key]; if(e){ c += Number(e.d)||0; ot += Number(e.ot)||0; } });
+  return { c, ot };
+}
+function tsNum(n){ return String(Math.round(n*100)/100).replace('.', ','); }
+function tsMsg(text, isErr){
+  const el = document.getElementById('ts-msg');
+  el.textContent = text || '';
+  el.className = 'ts-msg' + (isErr ? ' err' : '');
+}
+function tsMonthLabel(){ const [y,m] = ts.month.split('-'); return m + '/' + y; }
+
+function renderTimesheet(){
+  const pid = data.currentProjectId;
+  if(!pid) return;
+  if(!ts.seeded[pid]){
+    ts.seeded[pid] = true;
+    if(!tsWorkers().length){
+      ['A','B','C','D','E'].forEach(n=>ts.workers.push({ id: uid(), projectId: pid, name: n }));
+    }
+    tsSave();
+  }
+  document.getElementById('cc-project-name').textContent = currentProject() ? currentProject().name : '';
+  document.getElementById('ts-month').value = ts.month;
+
+  const ws = tsWorkers();
+  if(tsView !== 'summary' && !ws.find(w=>w.id===tsView)) tsView = 'summary';
+
+  document.getElementById('ts-subtabs').innerHTML =
+    `<button type="button" class="ts-chip ${tsView==='summary'?'active':''}" data-view="summary">Tổng hợp</button>` +
+    ws.map(w=>`<button type="button" class="ts-chip ${tsView===w.id?'active':''}" data-view="${w.id}">${escapeHtml(w.name)}</button>`).join('') +
+    `<button type="button" class="ts-chip add" data-act="add">+ Thêm nhân công</button>`;
+
+  const days = tsDays(ts.month);
+  const body = document.getElementById('ts-body');
+  if(tsView === 'summary'){
+    let tc = 0, tot = 0;
+    const rows = ws.map(w=>{
+      const t = tsTotals(w.id, days); tc += t.c; tot += t.ot;
+      return `<tr data-wid="${w.id}"><td>${escapeHtml(w.name)}</td><td>${tsNum(t.c)}</td><td>${tsNum(t.ot)}</td></tr>`;
+    }).join('');
+    body.innerHTML = ws.length === 0
+      ? '<p class="empty">Chưa có nhân công nào. Bấm "+ Thêm nhân công".</p>'
+      : `<table class="ts-table sum"><thead><tr><th style="text-align:left;">Nhân công</th><th>Tổng công</th><th>Tăng ca (giờ)</th></tr></thead>
+         <tbody>${rows}</tbody>
+         <tfoot><tr><td style="text-align:left;">Tổng cộng</td><td>${tsNum(tc)}</td><td>${tsNum(tot)}</td></tr></tfoot></table>
+         <p class="ts-msg">Tháng ${tsMonthLabel()} · bấm vào tên để mở bảng chấm công của người đó.</p>`;
+    return;
+  }
+
+  const w = ws.find(x=>x.id===tsView);
+  const a = ts.att[w.id] || {};
+  const localToday = (()=>{ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  const rows = days.map(d=>{
+    const e = a[d.key] || {};
+    return `<tr class="${d.dow===0?'sun':''} ${d.key===localToday?'today':''}">
+      <td>${String(d.day).padStart(2,'0')}/${String(d.mon).padStart(2,'0')}</td>
+      <td>${TS_DOW[d.dow]}</td>
+      <td><input class="ts-in" type="text" inputmode="decimal" autocomplete="off" data-key="${d.key}" data-f="d" placeholder="1 / 0.5" value="${e.d!=null?e.d:''}"></td>
+      <td><input class="ts-in" type="text" inputmode="decimal" autocomplete="off" data-key="${d.key}" data-f="ot" placeholder="giờ" value="${e.ot!=null?e.ot:''}"></td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="ts-worker-head">
+      <h3>${escapeHtml(w.name)} · Tháng ${tsMonthLabel()}</h3>
+      <button type="button" class="ts-btn" data-act="rename">Đổi tên</button>
+      <button type="button" class="ts-btn danger" data-act="delete">Xóa</button>
+    </div>
+    <table class="ts-table">
+      <thead><tr><th>Ngày</th><th>Thứ</th><th>Công</th><th>Tăng ca (giờ)</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="2">Tổng</td><td id="ts-sum-c">0</td><td id="ts-sum-ot">0</td></tr></tfoot>
+    </table>`;
+  tsUpdateTotals();
+}
+
+function tsUpdateTotals(){
+  const c = document.getElementById('ts-sum-c');
+  if(!c || tsView === 'summary') return;
+  const t = tsTotals(tsView, tsDays(ts.month));
+  c.textContent = tsNum(t.c);
+  document.getElementById('ts-sum-ot').textContent = tsNum(t.ot);
+}
+
+// Nhập công / tăng ca (kiểm tra giá trị hợp lệ)
+document.getElementById('ts-body').addEventListener('change', (e)=>{
+  const inp = e.target.closest('.ts-in');
+  if(!inp || tsView === 'summary') return;
+  const key = inp.dataset.key, f = inp.dataset.f;
+  const att = ts.att[tsView] || (ts.att[tsView] = {});
+  const cur = att[key] || {};
+  const raw = inp.value.trim().replace(',', '.');
+  let val = null, ok = true;
+  if(raw !== ''){
+    const n = Number(raw);
+    if(!isFinite(n)) ok = false;
+    else if(f === 'd'){
+      if(n === 0) val = null;
+      else if(n === 1 || n === 0.5) val = n;
+      else ok = false;
+    }else{
+      if(n === 0) val = null;
+      else if(n > 0 && n <= 24) val = Math.round(n*100)/100;
+      else ok = false;
+    }
+  }
+  if(!ok){
+    inp.value = cur[f] != null ? cur[f] : '';
+    tsMsg(f === 'd' ? 'Cột công chỉ nhận 1 hoặc 0.5 (để trống = nghỉ).' : 'Tăng ca nhập số giờ từ 0 đến 24 (để trống = không tăng ca).', true);
+    return;
+  }
+  tsMsg('');
+  if(val == null) delete cur[f]; else cur[f] = val;
+  if(cur.d == null && cur.ot == null) delete att[key]; else att[key] = cur;
+  inp.value = val == null ? '' : val;
+  tsSave();
+  tsUpdateTotals();
+});
+
+document.getElementById('ts-subtabs').addEventListener('click', (e)=>{
+  const b = e.target.closest('button');
+  if(!b) return;
+  if(b.dataset.act === 'add'){
+    const name = prompt('Tên nhân công mới:');
+    if(!name || !name.trim()) return;
+    const w = { id: uid(), projectId: data.currentProjectId, name: name.trim() };
+    ts.workers.push(w);
+    tsView = w.id;
+    tsSave(); tsMsg(''); renderTimesheet();
+    return;
+  }
+  if(b.dataset.view){ tsView = b.dataset.view; tsMsg(''); renderTimesheet(); }
+});
+
+document.getElementById('ts-body').addEventListener('click', (e)=>{
+  const row = e.target.closest('tr[data-wid]');
+  if(row){ tsView = row.dataset.wid; tsMsg(''); renderTimesheet(); return; }
+  const b = e.target.closest('button[data-act]');
+  if(!b) return;
+  const w = ts.workers.find(x=>x.id===tsView);
+  if(!w) return;
+  if(b.dataset.act === 'rename'){
+    const name = prompt('Đổi tên nhân công:', w.name);
+    if(!name || !name.trim()) return;
+    w.name = name.trim();
+    tsSave(); renderTimesheet();
+  }else if(b.dataset.act === 'delete'){
+    if(!confirm('Xóa nhân công "' + w.name + '" và toàn bộ dữ liệu chấm công của người này?')) return;
+    ts.workers = ts.workers.filter(x=>x.id!==w.id);
+    delete ts.att[w.id];
+    tsView = 'summary';
+    tsSave(); renderTimesheet();
+  }
+});
+
+function tsShiftMonth(delta){
+  const [y,m] = ts.month.split('-').map(Number);
+  ts.month = tsMonthKey(new Date(y, m-1+delta, 1));
+  tsSave(); tsMsg(''); renderTimesheet();
+}
+document.getElementById('ts-prev').addEventListener('click', ()=>tsShiftMonth(-1));
+document.getElementById('ts-next').addEventListener('click', ()=>tsShiftMonth(1));
+document.getElementById('ts-month').addEventListener('change', (e)=>{
+  if(/^\d{4}-\d{2}$/.test(e.target.value)){ ts.month = e.target.value; tsSave(); tsMsg(''); renderTimesheet(); }
+});
+
+async function exportTimesheetExcel(){
+  if(typeof ExcelJS === 'undefined'){
+    alert('Không tải được thư viện xuất Excel. Vui lòng kiểm tra kết nối mạng rồi thử lại.');
+    return;
+  }
+  const ws = tsWorkers();
+  if(!ws.length){ alert('Chưa có nhân công nào để xuất.'); return; }
+  const p = currentProject();
+  const days = tsDays(ts.month);
+  const mLabel = tsMonthLabel();
+  const wb = new ExcelJS.Workbook();
+  const used = new Set();
+  const sheetName = (n)=>{
+    const base = String(n).replace(/[\\\/\?\*\[\]:]/g,'_').trim().slice(0,27) || 'Sheet';
+    let s = base, i = 2;
+    while(used.has(s.toLowerCase())){ s = base + ' ' + (i++); }
+    used.add(s.toLowerCase());
+    return s;
+  };
+
+  // Sheet tổng hợp
+  const sum = wb.addWorksheet(sheetName('Tổng hợp'));
+  sum.columns = [{width:28},{width:14},{width:18}];
+  sum.mergeCells('A1:C1');
+  sum.getCell('A1').value = 'TỔNG HỢP CHẤM CÔNG - THÁNG ' + mLabel;
+  sum.getCell('A1').font = { bold:true, size:14 };
+  sum.getCell('A2').value = 'Dự án: ' + (p ? p.name : '');
+  sum.addRow([]);
+  const hr = sum.addRow(['Nhân công', 'Tổng công', 'Tăng ca (giờ)']);
+  styleHeaderRow(hr, 3);
+  let gc = 0, got = 0;
+  ws.forEach((w,i)=>{
+    const t = tsTotals(w.id, days); gc += t.c; got += t.ot;
+    const r = sum.addRow([w.name, t.c, t.ot]);
+    for(let c=1;c<=3;c++) r.getCell(c).border = { top:XL_THIN, bottom:XL_THIN, left:XL_THIN, right:XL_THIN };
+    r.getCell(2).alignment = { horizontal:'right' }; r.getCell(3).alignment = { horizontal:'right' };
+  });
+  const tr = sum.addRow(['Tổng cộng', gc, got]);
+  styleHeaderRow(tr, 3);
+
+  // Mỗi nhân công 1 sheet
+  ws.forEach(w=>{
+    const sh = wb.addWorksheet(sheetName(w.name));
+    sh.columns = [{width:14},{width:8},{width:12},{width:16}];
+    sh.mergeCells('A1:D1');
+    sh.getCell('A1').value = 'BẢNG CHẤM CÔNG - ' + w.name;
+    sh.getCell('A1').font = { bold:true, size:14 };
+    sh.getCell('A2').value = 'Dự án: ' + (p ? p.name : '') + '  |  Tháng ' + mLabel;
+    sh.addRow([]);
+    const head = sh.addRow(['Ngày', 'Thứ', 'Công', 'Tăng ca (giờ)']);
+    styleHeaderRow(head, 4);
+    for(let c=1;c<=4;c++) head.getCell(c).alignment = { vertical:'middle', horizontal:'center' };
+    const a = ts.att[w.id] || {};
+    const firstRow = head.number + 1;
+    days.forEach(d=>{
+      const e = a[d.key] || {};
+      const r = sh.addRow([
+        String(d.day).padStart(2,'0') + '/' + String(d.mon).padStart(2,'0') + '/' + d.year,
+        TS_DOW[d.dow],
+        e.d != null ? e.d : null,
+        e.ot != null ? e.ot : null
+      ]);
+      for(let c=1;c<=4;c++){
+        const cell = r.getCell(c);
+        cell.border = { top:XL_THIN, bottom:XL_THIN, left:XL_THIN, right:XL_THIN };
+        cell.alignment = { horizontal:'center' };
+        if(d.dow === 0){
+          cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF4E4E1' } };
+          cell.font = { color:{ argb:'FF9C3D33' } };
+        }
+      }
+    });
+    const lastRow = firstRow + days.length - 1;
+    const t = tsTotals(w.id, days);
+    const total = sh.addRow(['Tổng', '', { formula: `SUM(C${firstRow}:C${lastRow})`, result: t.c }, { formula: `SUM(D${firstRow}:D${lastRow})`, result: t.ot }]);
+    styleHeaderRow(total, 4);
+    for(let c=1;c<=4;c++) total.getCell(c).alignment = { horizontal:'center' };
+    sh.views = [{ state:'frozen', ySplit: head.number }];
+  });
+
+  const safeName = (p ? p.name : 'DuAn').replace(/[\\/:*?"<>|]/g,'_').trim() || 'DuAn';
+  await downloadWorkbook(wb, `ChamCong_${safeName}_${ts.month}.xlsx`);
+}
+
+document.getElementById('ts-export').addEventListener('click', async ()=>{
+  const btn = document.getElementById('ts-export');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Đang kiểm tra...';
+  try{
+    await ensureTrialChecked();
+    if(!isTrialValid()){
+      pendingExport = exportTimesheetExcel;
+      openPaymentModal();
+      return;
+    }
+    await exportTimesheetExcel();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+    updateTrialStatusUI();
+  }
+});
+
+tsLoad();
 
 const statusEl = document.getElementById('sync-status');
 if(sheetsConfigured()){
