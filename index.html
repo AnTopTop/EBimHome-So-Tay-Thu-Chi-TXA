@@ -1490,6 +1490,8 @@ function tsSumRow(w, days, wk){
   let c = 0, ot = 0;
   wk.keys.forEach(k=>{ const e = a[k]; if(e){ c += Number(e.d)||0; ot += Number(e.ot)||0; } });
   const mc = tsTotals(w.id, days).c;
+  let pc = 0; // tổng công mọi tháng của nhân công này trong dự án
+  Object.keys(a).forEach(k=>{ pc += Number(a[k].d)||0; });
   const own = (ts.pay[w.id] || {})[wk.key] || {};
   const rateOwn = own.rate != null ? own.rate : null;
   const rateInh = tsRateBefore(w.id, wk.key);
@@ -1500,12 +1502,12 @@ function tsSumRow(w, days, wk){
   const otRate = rateVnd * 3 / 16;
   const raw = c*rateVnd + ot*otRate + (allow||0)*1000 - (adv||0)*1000;
   const total = Math.ceil((raw - 1e-6) / 10000) * 10000 + 0;
-  return { mc, c, ot, rate, rateOwn, rateInh, allow, adv, otRate, total };
+  return { mc, pc, c, ot, rate, rateOwn, rateInh, allow, adv, otRate, total };
 }
 function tsRefreshSummary(){
   if(tsView !== 'summary') return;
   const wk = tsWeek(), days = tsDays(ts.month);
-  const tot = { mc:0, c:0, ot:0, allow:0, adv:0, total:0 };
+  const tot = { pc:0, mc:0, c:0, ot:0, allow:0, adv:0, total:0 };
   tsWorkers().forEach(w=>{
     const tr = document.querySelector('#ts-body tr[data-row="' + w.id + '"]');
     if(!tr) return;
@@ -1514,10 +1516,10 @@ function tsRefreshSummary(){
     te.textContent = tsMoney(r.total);
     te.style.color = r.total < 0 ? 'var(--expense)' : '';
     tr.querySelector('[data-f=rate]').placeholder = r.rateInh != null ? r.rateInh : '';
-    tot.mc += r.mc; tot.c += r.c; tot.ot += r.ot; tot.allow += (r.allow||0); tot.adv += (r.adv||0); tot.total += r.total;
+    tot.pc += r.pc; tot.mc += r.mc; tot.c += r.c; tot.ot += r.ot; tot.allow += (r.allow||0); tot.adv += (r.adv||0); tot.total += r.total;
   });
   const set = (k, v)=>{ const el = document.querySelector('#ts-body [data-ft="' + k + '"]'); if(el) el.textContent = v; };
-  set('mc', tsNum(tot.mc)); set('c', tsNum(tot.c)); set('ot', tsNum(tot.ot));
+  set('pc', tsNum(tot.pc)); set('mc', tsNum(tot.mc)); set('c', tsNum(tot.c)); set('ot', tsNum(tot.ot));
   set('allow', tsMoney(tot.allow*1000)); set('adv', tsMoney(tot.adv*1000)); set('total', tsMoney(tot.total));
 }
 
@@ -1552,6 +1554,7 @@ function renderTimesheet(){
       const inp = (f, v, ph)=>`<input class="ts-in ts-pay" type="text" inputmode="decimal" autocomplete="off" data-wid="${w.id}" data-f="${f}" value="${v!=null?v:''}" placeholder="${ph!=null?ph:''}">`;
       return `<tr data-row="${w.id}">
         <td class="nm" data-wid="${w.id}">${escapeHtml(w.name)}</td>
+        <td>${tsNum(r.pc)}</td>
         <td>${tsNum(r.mc)}</td>
         <td>${tsNum(r.c)}</td>
         <td>${tsNum(r.ot)}</td>
@@ -1572,6 +1575,7 @@ function renderTimesheet(){
          <div class="ts-scroll"><table class="ts-table sum">
            <thead><tr>
              <th style="text-align:left;">Nhân công</th>
+             <th>Tổng công<small>cả dự án</small></th>
              <th>Tổng công<small>tháng ${mNum}</small></th>
              <th>Tổng công<small>(tuần ${wk.label})</small></th>
              <th>Tăng ca<small>tuần (giờ)</small></th>
@@ -1582,10 +1586,10 @@ function renderTimesheet(){
            </tr></thead>
            <tbody>${rows}</tbody>
            <tfoot><tr><td style="text-align:left;">Tổng cộng</td>
-             <td data-ft="mc"></td><td data-ft="c"></td><td data-ft="ot"></td><td></td>
+             <td data-ft="pc"></td><td data-ft="mc"></td><td data-ft="c"></td><td data-ft="ot"></td><td></td>
              <td data-ft="allow" style="font-size:11px;"></td><td data-ft="adv" style="font-size:11px;"></td><td data-ft="total" style="text-align:right;"></td>
            </tr></tfoot></table></div>
-         <p class="ts-msg">Tiền nhập theo nghìn đồng: 600 = 600.000đ. Tiền tuần = công × công/ngày + giờ tăng ca × (công/ngày ÷ 8 × 1,5) + phụ cấp − đã ứng, rồi làm tròn lên 10.000đ. Bấm vào tên để mở bảng chấm công.</p>`;
+         <p class="ts-msg">Tiền nhập theo nghìn đồng: 600 = 600.000đ. Tiền tuần = công × công/ngày + giờ tăng ca × (công/ngày ÷ 8 × 1,5) + phụ cấp − đã ứng, rồi làm tròn lên 10.000đ. Cột "cả dự án" cộng công của tất cả các tháng. Bấm vào tên để mở bảng chấm công.</p>`;
     tsRefreshSummary();
     return;
   }
@@ -1758,38 +1762,38 @@ async function exportTimesheetExcel(){
   // Sheet tổng hợp (chấm công + tiền công theo tuần đang xem)
   const wk = tsWeek();
   const sum = wb.addWorksheet(sheetName('Tổng hợp'));
-  sum.columns = [{width:24},{width:16},{width:18},{width:14},{width:16},{width:18},{width:14},{width:14},{width:18}];
-  sum.mergeCells('A1:I1');
+  sum.columns = [{width:24},{width:16},{width:16},{width:18},{width:14},{width:16},{width:18},{width:14},{width:14},{width:18}];
+  sum.mergeCells('A1:J1');
   sum.getCell('A1').value = 'TỔNG HỢP CHẤM CÔNG & TIỀN CÔNG';
   sum.getCell('A1').font = { bold:true, size:14 };
   sum.getCell('A2').value = 'Dự án: ' + (p ? p.name : '') + '  |  Tháng ' + mLabel + '  |  Tuần ' + wk.label + '/' + wk.year;
   sum.addRow([]);
-  const hr = sum.addRow(['Nhân công', 'Tổng công tháng ' + mLabel, 'Tổng công tuần ' + wk.label, 'Tăng ca tuần (giờ)', 'Công/ngày (VND)', 'Đơn giá tăng ca/giờ (VND)', 'Phụ cấp (VND)', 'Đã ứng (VND)', 'Tổng tiền (VND)']);
-  styleHeaderRow(hr, 9);
+  const hr = sum.addRow(['Nhân công', 'Tổng công cả dự án', 'Tổng công tháng ' + mLabel, 'Tổng công tuần ' + wk.label, 'Tăng ca tuần (giờ)', 'Công/ngày (VND)', 'Đơn giá tăng ca/giờ (VND)', 'Phụ cấp (VND)', 'Đã ứng (VND)', 'Tổng tiền (VND)']);
+  styleHeaderRow(hr, 10);
   hr.height = 34;
-  for(let c=1;c<=9;c++) hr.getCell(c).alignment = { vertical:'middle', horizontal:'center', wrapText:true };
+  for(let c=1;c<=10;c++) hr.getCell(c).alignment = { vertical:'middle', horizontal:'center', wrapText:true };
   const first = hr.number + 1;
-  const t = { mc:0, c:0, ot:0, allow:0, adv:0, total:0 };
+  const t = { pc:0, mc:0, c:0, ot:0, allow:0, adv:0, total:0 };
   ws.forEach(w=>{
     const r = tsSumRow(w, days, wk);
-    const row = sum.addRow([w.name, r.mc, r.c, r.ot, r.rate ? r.rate*1000 : null, r.rate ? r.otRate : null, r.allow != null ? r.allow*1000 : null, r.adv != null ? r.adv*1000 : null, null]);
+    const row = sum.addRow([w.name, r.pc, r.mc, r.c, r.ot, r.rate ? r.rate*1000 : null, r.rate ? r.otRate : null, r.allow != null ? r.allow*1000 : null, r.adv != null ? r.adv*1000 : null, null]);
     const n = row.number;
-    row.getCell(9).value = { formula: `CEILING(C${n}*E${n}+D${n}*F${n}+G${n}-H${n},10000)`, result: r.total };
-    for(let c=1;c<=9;c++){
+    row.getCell(10).value = { formula: `CEILING(D${n}*F${n}+E${n}*G${n}+H${n}-I${n},10000)`, result: r.total };
+    for(let c=1;c<=10;c++){
       const cell = row.getCell(c);
       cell.border = { top:XL_THIN, bottom:XL_THIN, left:XL_THIN, right:XL_THIN };
-      if(c >= 5) cell.numFmt = XL_NUM_FMT;
+      if(c >= 6) cell.numFmt = XL_NUM_FMT;
       if(c >= 2) cell.alignment = { horizontal:'right' };
     }
-    t.mc += r.mc; t.c += r.c; t.ot += r.ot; t.allow += (r.allow||0)*1000; t.adv += (r.adv||0)*1000; t.total += r.total;
+    t.pc += r.pc; t.mc += r.mc; t.c += r.c; t.ot += r.ot; t.allow += (r.allow||0)*1000; t.adv += (r.adv||0)*1000; t.total += r.total;
   });
   const last = first + ws.length - 1;
   const S = (col, res)=>({ formula: `SUM(${col}${first}:${col}${last})`, result: res });
-  const tr = sum.addRow(['Tổng cộng', S('B', t.mc), S('C', t.c), S('D', t.ot), null, null, S('G', t.allow), S('H', t.adv), S('I', t.total)]);
-  styleHeaderRow(tr, 9);
-  for(let c=5;c<=9;c++) tr.getCell(c).numFmt = XL_NUM_FMT;
+  const tr = sum.addRow(['Tổng cộng', S('B', t.pc), S('C', t.mc), S('D', t.c), S('E', t.ot), null, null, S('H', t.allow), S('I', t.adv), S('J', t.total)]);
+  styleHeaderRow(tr, 10);
+  for(let c=6;c<=10;c++) tr.getCell(c).numFmt = XL_NUM_FMT;
   sum.addRow([]);
-  sum.addRow(['Ghi chú: đơn giá tăng ca/giờ = công/ngày ÷ 8 × 1,5. Tổng tiền = công tuần × công/ngày + giờ tăng ca × đơn giá tăng ca + phụ cấp − đã ứng, làm tròn lên 10.000đ.']);
+  sum.addRow(['Ghi chú: "Tổng công cả dự án" cộng công của tất cả các tháng. Đơn giá tăng ca/giờ = công/ngày ÷ 8 × 1,5. Tổng tiền = công tuần × công/ngày + giờ tăng ca × đơn giá tăng ca + phụ cấp − đã ứng, làm tròn lên 10.000đ.']);
 
   // Sheet "Các tuần": tất cả các tuần (T2-T7) chạm vào tháng đang chọn
   const weeks = tsMonthWeeks(ts.month);
